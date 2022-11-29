@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <title>Webgis 3: Geoserver Layer</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device.width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="libs/leaflet/leaflet.css"/>
+    <link rel="stylesheet" href="css/mymap.css"/>
+
+    <script src="libs/jquery-3.6.1/jquery-3.6.1/dist/jquery.min.js"></script>
+    <script src="libs/leaflet/leaflet.js"></script>
+    </head>
+    <body>
+        <div id="mapdiv"></div>
+        <script>
+            var mymap = L.map("mapdiv").setView([-7.660,110.399], 11);
+
+            var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                attribution : '&copy:<a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                subdomains : ['a', 'b', 'c']
+            }
+            );
+
+            osm.addTo(mymap);
+
+            var yogya_desa = L.tileLayer.wms("/geoserver/wms?",{
+                layers:"Sigweb:Batas_Desa",
+                format : "image/png",
+                transparent : true
+            });
+            yogya_desa.addTo(mymap);
+
+            var yogya_jalan = L.tileLayer.wms("/geoserver/wms?",{
+                layers:"Sigweb:Jaringan_jalan",
+                format : "image/png",
+                transparent : true
+            });
+            yogya_jalan.addTo(mymap);
+
+            var yogya_fasum = L.tileLayer.wms("/geoserver/wms?",{
+                layers:"Sigweb:Fasilitas_Umum",
+                format : "image/png",
+                transparent : true
+            });
+            yogya_fasum.addTo(mymap);
+
+            var yogya_lu = L.tileLayer.wms("/geoserver/wms?",{
+                layers:"Sigweb:Guna_Lahan",
+                format : "image/png",
+                transparent : true
+            });
+            yogya_lu.addTo(mymap);
+
+            var yogya_sungai = L.tileLayer.wms("/geoserver/wms?",{
+                layers:"Sigweb:Sungai_Sleman",
+                format : "image/png",
+                transparent : true
+            });
+            yogya_sungai.addTo(mymap);
+
+            var yogya_KRB = L.tileLayer.wms("/geoserver/wms?",{
+                layers:"Sigweb:KRB_Merapi",
+                format : "image/png",
+                transparent : true
+            });
+            yogya_KRB.addTo(mymap);
+
+            var basemap = {
+                "OpenStreetMap":osm
+            };
+
+            var overlaymap = {
+                "Landuse" : yogya_lu,
+                "Desa" : yogya_desa,
+                "Sungai" : yogya_sungai,
+                "Jalan" : yogya_jalan,
+                "Fasilitas Umum" : yogya_fasum,
+                "KRB Merapi" : yogya_KRB,
+
+            }
+
+            L.control.layers(basemap,overlaymap).addTo(mymap);
+
+            //object info
+            mymap.on('click', function(e){
+                var pos = e.latlng;
+                var pt = mymap.latLngToContainerPoint(pos);
+                var w = mymap.getSize().x;
+                var h = mymap.getSize().y;
+                var bnd = mymap.getBounds();
+                var west = bnd.getWest();
+                var east = bnd.getEast();
+                var north = bnd.getNorth();
+                var south = bnd.getSouth();
+                $.ajax({
+                    url:"/geoserver/wms",
+                    data :{
+                        service:"WMS",
+                        version:"1.1.1",
+                        request:"GetFeatureInfo",
+                        info_format:"application/json",
+                        layers:'Sigweb:Jaringan_jalan',
+                        query_layers: 'Sigweb:Jaringan_jalan',
+                        width : w,
+                        height : h,
+                        x:parseInt(pt.x),
+                        y:parseInt(pt.y),
+                        bbox:west+','+south+','+east+','+north
+                    },
+                    success: function(ajaxresult){
+                        console.log(ajaxresult);
+                        if(typeof(ajaxresult)!='undefined'){
+                            if(ajaxresult.features.length>0){
+                            var pro = ajaxresult.features[0].properties;
+                            var content = "<table><tr><th>Field</th><th>Value</th></tr>";
+                                $.each(pro,function(index, value){
+                                    content += "<tr><td>" + index + "</td><td>" + value + "</td></tr>";
+                                });
+                                content += "</table>";
+                            L.popup().setLatLng(pos).setContent(content).openOn(mymap);
+                            }
+                        }
+                    },
+                    error : function(jqXHR, textStatus, errorThrown){
+                        alert("Error");
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>
